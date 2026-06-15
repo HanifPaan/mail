@@ -1,0 +1,162 @@
+#!/bin/bash
+
+echo "======================================"
+echo "   MAIL LOGIN IP CHECKER"
+echo "======================================"
+echo ""
+
+echo "Maillog files:"
+ls -1 /var/log/maillog* 2>/dev/null
+
+echo ""
+echo "Copy & paste the file name:"
+read LOGFILE </dev/tty
+
+if [[ ! -f "$LOGFILE" ]]; then
+    echo ""
+    echo "❌ File not found"
+    exit 1
+fi
+
+# ---------------- EMAIL LOOP ----------------
+while true; do
+
+    echo ""
+    echo "Enter email/domain/ip:"
+    read USER </dev/tty
+
+    if [[ -z "$USER" ]]; then
+        echo ""
+        echo "❌ Email cannot be empty"
+        continue
+    fi
+
+    echo ""
+    echo "Enter date (e.g. Jun 3) or press ENTER for ALL:"
+    read DATE </dev/tty
+
+    echo ""
+    echo "Processing..."
+
+    if [[ -n "$DATE" ]]; then
+        DATA=$(grep -F -- "$DATE" "$LOGFILE" | grep -F -- "$USER")
+    else
+        DATA=$(grep -F -- "$USER" "$LOGFILE")
+    fi
+
+    if [[ -n "$DATA" ]]; then
+        break
+    fi
+
+    echo ""
+    echo "❌ NO DATA FOUND"
+    echo "1) Try again"
+    echo "2) Exit"
+
+    read CH </dev/tty
+
+    if [[ "$CH" != "1" ]]; then
+        echo "👋 Exit"
+        exit 0
+    fi
+
+done
+
+SUCCESS_LINES=$(echo "$DATA" | grep -E "Logged in:|A=dovecot_login:")
+FAILED_LINES=$(echo "$DATA" | grep -E "auth failed|auth_failed|Login aborted")
+
+# ---------------- SERVICE DETECTION ----------------
+echo ""
+echo "Detected Email Service:"
+echo "--------------------------------------"
+
+IMAP_COUNT=$(echo "$SUCCESS_LINES" | grep -o "imap" | wc -l)
+POP3_COUNT=$(echo "$SUCCESS_LINES" | grep -o "pop3" | wc -l)
+
+if [[ "$IMAP_COUNT" -gt 0 ]]; then
+    printf "   (%s line use) IMAP\n" "$IMAP_COUNT"
+fi
+
+if [[ "$POP3_COUNT" -gt 0 ]]; then
+    printf "   (%s line use) POP3\n" "$POP3_COUNT"
+fi
+
+echo "--------------------------------------"
+
+# ---------------- LAST FAILED LOGS ----------------
+if [[ -n "$FAILED_LINES" ]]; then
+    echo ""
+    echo "⚠️ Last Failed Logs:"
+    echo "--------------------------------------"
+    echo "$FAILED_LINES" | tail -5
+    echo "--------------------------------------"
+fi
+
+# ---------------- IP SECTION ----------------
+echo ""
+echo "Login IPs for $USER"
+echo "--------------------------------------"
+
+echo "$DATA" | \
+grep -E "imap-login|pop3-login|A=dovecot_login" | \
+grep -oP '(?<=rip=)[^,]+|(?<=\[)[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?=\])' | \
+sort | uniq -c | sort -nr | \
+while read count ip; do
+
+    city=""
+    region=""
+    country=""
+
+    SUCCESS_IP=$(echo "$SUCCESS_LINES" | grep -F -- "$ip" | wc -l)
+    FAILED_IP=$(echo "$FAILED_LINES" | grep -F -- "$ip" | wc -l)
+
+    data=$(curl -s --max-time 3 "http://ip-api.com/json/$ip?fields=status,country,regionName,city")
+
+    if echo "$data" | grep -q '"status":"success"'; then
+        city=$(echo "$data" | grep -oP '"city"\s*:\s*"\K[^"]+')
+        region=$(echo "$data" | grep -oP '"regionName"\s*:\s*"\K[^"]+')
+        country=$(echo "$data" | grep -oP '"country"\s*:\s*"\K[^"]+')
+    else
+
+        data=$(curl -s --max-time 3 "https://ipwho.is/$ip")
+
+        if echo "$data" | grep -q '"success":true'; then
+            city=$(echo "$data" | grep -oP '"city"\s*:\s*"\K[^"]+')
+            region=$(echo "$data" | grep -oP '"region"\s*:\s*"\K[^"]+')
+            country=$(echo "$data" | grep -oP '"country"\s*:\s*"\K[^"]+')
+        else
+
+            data=$(curl -s --max-time 3 "https://freeipapi.com/api/json/$ip")
+
+            city=$(echo "$data" | grep -oP '"city"\s*:\s*"\K[^"]+')
+            region=$(echo "$data" | grep -oP '"regionName"\s*:\s*"\K[^"]+')
+            country=$(echo "$data" | grep -oP '"countryName"\s*:\s*"\K[^"]+')
+        fi
+    fi
+
+    USERS=$(echo "$DATA" | grep -F -- "$ip" | \
+    grep -Eo '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+' | \
+    sort -u | paste -sd "," -)
+
+    if [[ -z "$country" || "$ip" == "::1" || "$ip" == "127.0.0.1" ]]; then
+        FLAG=""
+    elif [[ "$country" != "Malaysia" && "$country" != "United States" && "$country" != "Singapore" ]]; then
+        FLAG="(Suspicious)"
+    else
+        FLAG=""
+    fi
+
+    printf "\n%-18s %s\n" "$ip" "$FLAG"
+    printf "   %10s : login attempts :\n" "$count"
+    printf "              success : %s\n" "$SUCCESS_IP"
+    printf "              failed  : %s\n" "$FAILED_IP"
+    printf "   email(s) : %s\n" "$USERS"
+    printf "   city     : %s\n" "$city"
+    printf "   region   : %s\n" "$region"
+    printf "   country  : %s\n" "$country"
+
+done
+
+echo ""
+echo "--------------------------------------"
+echo "Done"
