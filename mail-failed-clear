@@ -1,0 +1,6 @@
+#!/bin/bash
+
+CURRENT_DIR="$(pwd)"
+
+find "$CURRENT_DIR" -type f -exec grep -lE \
+"Mail delivery failed: returning message to sender|Mail delivery deferred: returning message to sender|Mail failure|Message Delivery Failure|Undeliverable:" {} \; -exec rm -f {} \;
