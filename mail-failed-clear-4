@@ -3,6 +3,6 @@
 CURRENT_DIR="$(pwd)"
 
 find "$CURRENT_DIR" -type f -print0 | \
-xargs -0 -P4 grep -lE \
+xargs -0 grep -IlE \
 "Mail delivery failed: returning message to sender|Mail delivery deferred: returning message to sender|Mail failure|Message Delivery Failure|Undeliverable:" | \
 xargs -r rm -f
