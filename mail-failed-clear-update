@@ -20,15 +20,27 @@ fi
 
 # ---------------- DATE LIST ----------------
 echo ""
-echo "Press ENTER for all dates"
-echo "Or select from available dates:"
+echo "Date option:"
+echo "1) All dates"
+echo "2) Select date"
 echo "--------------------------------------"
+read DATE_OPTION </dev/tty
 
-awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE"
+DATE=""
 
-echo "--------------------------------------"
-echo "Choose date (ENTER = ALL):"
-read DATE </dev/tty
+if [[ "$DATE_OPTION" == "2" ]]; then
+
+    echo ""
+    echo "Available dates:"
+    echo "--------------------------------------"
+
+    awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE"
+
+    echo "--------------------------------------"
+    echo "Choose date:"
+    read DATE </dev/tty
+
+fi
 
 
 # ---------------- EMAIL LOOP ----------------
