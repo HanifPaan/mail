@@ -37,7 +37,7 @@ if [[ "$DATE_OPTION" == "2" ]]; then
     awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE"
 
     echo "--------------------------------------"
-    echo "Choose date:"
+    echo "Enter date exactly (example: Jun 1):"
     read DATE </dev/tty
 
 fi
