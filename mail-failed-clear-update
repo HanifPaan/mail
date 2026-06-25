@@ -23,11 +23,21 @@ echo ""
 echo "Available dates:"
 echo "--------------------------------------"
 
-awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE"
+DATES=$(awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE")
+
+echo "$DATES"
 
 echo "--------------------------------------"
 echo "Choose date (ENTER = ALL):"
 read DATE </dev/tty
+
+if [[ -n "$DATE" ]]; then
+    if ! echo "$DATES" | grep -Fxq "$DATE"; then
+        echo ""
+        echo "❌ Invalid date selected"
+        exit 1
+    fi
+fi
 
 
 # ---------------- EMAIL LOOP ----------------
