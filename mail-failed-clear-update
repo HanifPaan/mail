@@ -20,24 +20,15 @@ fi
 
 # ---------------- DATE LIST ----------------
 echo ""
-echo "Available dates:"
+echo "Press ENTER for all dates"
+echo "Or select from available dates:"
 echo "--------------------------------------"
 
-DATES=$(awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE")
-
-echo "$DATES"
+awk '!seen[$1" "$2]++ {print $1" "$2}' "$LOGFILE"
 
 echo "--------------------------------------"
 echo "Choose date (ENTER = ALL):"
 read DATE </dev/tty
-
-if [[ -n "$DATE" ]]; then
-    if ! echo "$DATES" | grep -Fxq "$DATE"; then
-        echo ""
-        echo "❌ Invalid date selected"
-        exit 1
-    fi
-fi
 
 
 # ---------------- EMAIL LOOP ----------------
@@ -109,7 +100,6 @@ if [[ -n "$FAILED_LINES" ]]; then
     echo "$FAILED_LINES" | tail -5
     echo "--------------------------------------"
 fi
-
 # ---------------- IP SECTION ----------------
 echo ""
 echo "Login IPs for $USER"
