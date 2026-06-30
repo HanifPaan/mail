@@ -1,0 +1,5 @@
+#!/bin/bash
+
+CURRENT_DIR="$(pwd)"
+
+grep -r -l -E 'Mail delivery failed: returning message to sender|Mail delivery deferred: returning message to sender|Mail failure|Message Delivery Failure|Undeliverable:|Undelivered Mail' "$CURRENT_DIR" | xargs -r rm -f -v
